@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTT — 球面逸脱指数（SDI）試算ダッシュボード</title>
+<meta name="description" content="トリテトラ理論（TTT）に基づき、労働・投資・公務・議員活動における報酬と貢献のアンバランスを球面逸脱指数（SDI）で可視化します。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --ink:       #0e0e0e;
+  --paper:     #f5f2eb;
+  --paper2:    #ede9e0;
+  --paper3:    #e4dfd4;
+  --accent:    #1a4a2e;
+  --accent2:   #c8440a;
+  --accent3:   #1a3a5c;
+  --muted:     #6b6560;
+  --border:    rgba(14,14,14,0.12);
+  --ok:        #1a6b3a;
+  --warn:      #7a5010;
+  --danger:    #8a2010;
+  --serif:     'Noto Serif JP', serif;
+  --sans:      'Noto Sans JP', sans-serif;
+  --mono:      'IBM Plex Mono', monospace;
+  --r-sm:      4px;
+  --r-md:      8px;
+  --r-lg:      14px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-weight: 300;
+  line-height: 1.75;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 0 clamp(1rem,5vw,4rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  background: var(--paper);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-decoration: none;
+}
+.logo span { color: var(--accent2); }
+nav { display: flex; gap: 1.5rem; }
+nav a {
+  font-size: .8rem;
+  color: var(--muted);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: color .2s;
+}
+nav a:hover { color: var(--ink); }
+
+/* ── HERO ── */
+.hero {
+  padding: clamp(3rem,8vw,6rem) clamp(1rem,5vw,4rem);
+  max-width: 900px;
+  margin: 0 auto;
+  border-bottom: 1px solid var(--border);
+}
+.hero-tag {
+  font-family: var(--mono);
+  font-size: .72rem;
+  color: var(--accent2);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 1.2rem;
+}
+.hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(1.8rem, 5vw, 3.2rem);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  margin-bottom: 1.2rem;
+}
+.hero h1 em {
+  font-style: normal;
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+.hero-sub {
+  font-size: 1rem;
+  color: var(--muted);
+  max-width: 600px;
+  margin-bottom: 2rem;
+  line-height: 1.9;
+}
+.theorem-box {
+  background: var(--paper2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-md);
+  padding: 1.2rem 1.5rem;
+  font-family: var(--mono);
+  font-size: .88rem;
+  color: var(--ink);
+  line-height: 2;
+}
+.theorem-box .formula { color: var(--accent); font-weight: 600; }
+
+/* ── SECTION ── */
+.section {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: clamp(2rem,5vw,3.5rem) clamp(1rem,5vw,4rem);
+  border-bottom: 1px solid var(--border);
+}
+.section-tag {
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--muted);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: .5rem;
+}
+.section h2 {
+  font-family: var(--serif);
+  font-size: clamp(1.2rem,3vw,1.7rem);
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  line-height: 1.4;
+}
+
+/* ── TABS ── */
+.tab-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.tab-btn {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: .8rem;
+  cursor: pointer;
+  transition: all .2s;
+}
+.tab-btn:hover { border-color: var(--accent); color: var(--accent); }
+.tab-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ── FILTER ── */
+.filter-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 1.2rem;
+}
+.fbtn {
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: .75rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .18s;
+  font-family: var(--sans);
+}
+.fbtn:hover { border-color: var(--accent); }
+.fbtn.on {
+  background: var(--paper2);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+/* ── CARDS ── */
+.card-grid { display: flex; flex-direction: column; gap: 10px; }
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.1rem 1.3rem;
+  transition: border-color .2s;
+}
+.card:hover { border-color: var(--accent); }
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.card-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+.badge {
+  font-size: .68rem;
+  padding: 2px 7px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  font-family: var(--mono);
+}
+.card-title {
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.bar-lbl {
+  font-size: .7rem;
+  color: var(--muted);
+  width: 70px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--paper2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.bar-fill { height: 100%; border-radius: 3px; transition: width .5s ease; }
+.bar-val {
+  font-size: .7rem;
+  color: var(--muted);
+  width: 60px;
+  font-family: var(--mono);
+  flex-shrink: 0;
+}
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sdi-display {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.sdi-lbl { font-size: .7rem; color: var(--muted); font-family: var(--mono); }
+.sdi-val { font-size: 1.3rem; font-family: var(--mono); font-weight: 600; }
+.balance-lbl { font-size: .72rem; }
+.card-note { font-size: .68rem; color: var(--muted); margin-top: 5px; font-style: italic; }
+
+/* ── SDI CALC ── */
+.calc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+@media(max-width:600px){ .calc-grid { grid-template-columns: 1fr; } }
+.calc-panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.3rem;
+}
+.calc-panel h3 {
+  font-family: var(--serif);
+  font-size: .95rem;
+  margin-bottom: 1rem;
+  color: var(--accent);
+}
+.field { margin-bottom: .9rem; }
+.field label {
+  display: block;
+  font-size: .75rem;
+  color: var(--muted);
+  margin-bottom: 3px;
+  font-family: var(--mono);
+}
+.field input[type=number], .field select {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--paper);
+  font-family: var(--mono);
+  font-size: .85rem;
+  color: var(--ink);
+  outline: none;
+  transition: border-color .2s;
+}
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.field input[type=range] { width: 100%; accent-color: var(--accent); }
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slider-row input { flex: 1; }
+.slider-val {
+  font-family: var(--mono);
+  font-size: .85rem;
+  width: 36px;
+  text-align: right;
+  color: var(--ink);
+}
+.result-panel {
+  background: var(--paper2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 1.3rem;
+}
+.result-panel h3 {
+  font-family: var(--serif);
+  font-size: .95rem;
+  margin-bottom: 1rem;
+}
+.result-sdi {
+  font-family: var(--mono);
+  font-size: 3rem;
+  font-weight: 600;
+  margin-bottom: .3rem;
+}
+.result-verdict {
+  font-size: .85rem;
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-family: var(--mono);
+}
+.progress-wrap { margin: .8rem 0; }
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: .68rem;
+  color: var(--muted);
+  margin-bottom: 3px;
+  font-family: var(--mono);
+}
+.progress-track {
+  height: 10px;
+  background: var(--paper3);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width .5s ease, background .3s;
+}
+.zone-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: .6rem;
+  color: var(--muted);
+  margin-top: 2px;
+  font-family: var(--mono);
+}
+.metric-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: .8rem;
+}
+.met {
+  background: #fff;
+  border-radius: var(--r-sm);
+  padding: .6rem .8rem;
+  border: 1px solid var(--border);
+}
+.met-l { font-size: .65rem; color: var(--muted); font-family: var(--mono); }
+.met-v { font-size: 1.1rem; font-weight: 500; font-family: var(--mono); }
+
+/* ── CHART ── */
+.chart-wrap { position: relative; width: 100%; }
+.legend-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: .75rem;
+  color: var(--muted);
+  margin-bottom: .8rem;
+}
+.ldot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* ── INSIGHT ── */
+.insight-card {
+  border-left: 3px solid;
+  padding: .9rem 1.1rem;
+  margin-bottom: 1rem;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: #fff;
+}
+.insight-title { font-family: var(--serif); font-size: .95rem; font-weight: 700; margin-bottom: 5px; }
+.insight-body { font-size: .82rem; color: var(--muted); line-height: 1.85; }
+
+/* ── FOOTER ── */
+footer {
+  padding: 2.5rem clamp(1rem,5vw,4rem);
+  border-top: 1px solid var(--border);
+  max-width: 960px;
+  margin: 0 auto;
+}
+.footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.footer-left { max-width: 480px; }
+.footer-title {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: .5rem;
+  font-size: .9rem;
+}
+.footer-desc { font-size: .78rem; color: var(--muted); line-height: 1.8; }
+.footer-links { display: flex; flex-direction: column; gap: .4rem; }
+.footer-links a {
+  font-size: .78rem;
+  color: var(--muted);
+  text-decoration: none;
+  font-family: var(--mono);
+  transition: color .2s;
+}
+.footer-links a:hover { color: var(--accent); }
+.footer-copy {
+  font-size: .7rem;
+  color: var(--muted);
+  margin-top: 1.5rem;
+  font-family: var(--mono);
+}
+
+/* ── UTIL ── */
+.hidden { display: none; }
+.mt1 { margin-top: 1rem; }
+.action-btn {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 10px 22px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  font-family: var(--mono);
+  font-size: .82rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity .2s;
+  letter-spacing: .04em;
+}
+.action-btn:hover { opacity: .82; }
+.action-btn.outline {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+@media(max-width:640px){
+  nav { display: none; }
+  .metric-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="#">TTT<span>—</span>SDI</a>
+  <nav>
+    <a href="#theory">理論</a>
+    <a href="#industry">産業別</a>
+    <a href="#public">公務・議員</a>
+    <a href="#calculator">試算</a>
+    <a href="#insight">分析</a>
+  </nav>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <p class="hero-tag">Tri-Tetra Theory / 球面逸脱指数</p>
+  <h1>報酬と貢献の<em>アンバランス</em>を<br>数式で可視化する</h1>
+  <p class="hero-sub">
+    トリテトラ理論（TTT）は「すべてのベクトルの総和はゼロに収束する」という原理から出発します。
+    球面逸脱指数（SDI）は、労働・投資・公務・議員活動における報酬が実体貢献と
+    どれだけ乖離しているかを客観的に測定する指標です。
+  </p>
+  <div class="theorem-box">
+    <div><span class="formula">主定理</span>　あらゆる空間・時間・構造・社会におけるベクトルの総和は <span class="formula">0</span> である</div>
+    <div style="margin-top:.5rem"><span class="formula">SDI</span> = 利益 ÷ ( 実体貢献 × √T × 社会修復係数 )</div>
+    <div style="margin-top:.5rem;font-size:.78rem;color:var(--muted)">SDI &gt; 1 → 球面外逸脱（報酬過剰）　SDI ≦ 1 → 球面内均衡（正当）</div>
+  </div>
+  <div class="btn-row mt1">
+    <a href="#calculator" class="action-btn">SDIを試算する</a>
+    <a href="https://github.com/kiki054-n/TTT" class="action-btn outline" target="_blank">GitHub →</a>
+  </div>
+</section>
+
+<!-- THEORY -->
+<section class="section" id="theory">
+  <p class="section-tag">01 / Theory</p>
+  <h2>TTT理論とSDIの考え方</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem">
+    <div class="insight-card" style="border-color:var(--accent)">
+      <div class="insight-title" style="color:var(--accent)">球面均衡の原理</div>
+      <div class="insight-body">OOπ（球面）の中心点に対し、すべての点は対称点を持ちベクトルが相殺される。自然界の球が表面積を最小にしようとするように、社会も均衡状態へ収束しようとする。</div>
+    </div>
+    <div class="insight-card" style="border-color:var(--accent2)">
+      <div class="insight-title" style="color:var(--accent2)">歪みと修復ベクトル</div>
+      <div class="insight-body">球面から逸脱した歪みは必ず修復ベクトル（危機・崩壊・規制）を呼び込む。SDIはその歪みを事前に定量化し、修復ベクトルが発動する前に問題を可視化する。</div>
+    </div>
+    <div class="insight-card" style="border-color:var(--accent3)">
+      <div class="insight-title" style="color:var(--accent3)">時間は√Tで効く</div>
+      <div class="insight-body">時間はベクトルの振幅であり線形ではない。長期の貢献ほど時間補正値（√T）が逓減し、複利的な無制限増大を自然に抑制する。瞬時の利益ほどSDIは発散する。</div>
+    </div>
+  </div>
+</section>
+
+<!-- INDUSTRY -->
+<section class="section" id="industry">
+  <p class="section-tag">02 / Industry</p>
+  <h2>産業別・職種別 SDI試算</h2>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchIndustryTab('list')">一覧</button>
+    <button class="tab-btn" onclick="switchIndustryTab('chart')">グラフ比較</button>
+  </div>
+
+  <div id="ind-list">
+    <div class="filter-bar" id="ind-filter"></div>
+    <div class="card-grid" id="ind-cards"></div>
+  </div>
+
+  <div id="ind-chart" class="hidden">
+    <div class="legend-row">
+      <span><span class="ldot" style="background:#1a6b3a"></span>年収（万円）</span>
+      <span><span class="ldot" style="background:#1a3a5c"></span>労働意欲×50</span>
+      <span><span class="ldot" style="background:#c8440a"></span>SDI×30</span>
+    </div>
+    <div class="chart-wrap" id="ind-chart-wrap" style="height:580px">
+      <canvas id="ind-canvas" role="img" aria-label="産業別・職種別の年収・労働意欲・SDI比較横棒グラフ">産業別SDI比較グラフ</canvas>
+    </div>
+  </div>
+</section>
+
+<!-- PUBLIC -->
+<section class="section" id="public">
+  <p class="section-tag">03 / Public Sector</p>
+  <h2>公務員・議員 権力×責任×報酬分析</h2>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchPublicTab('list')">一覧</button>
+    <button class="tab-btn" onclick="switchPublicTab('scatter')">権力×責任マップ</button>
+    <button class="tab-btn" onclick="switchPublicTab('chart')">グラフ比較</button>
+  </div>
+
+  <div id="pub-list">
+    <div class="filter-bar" id="pub-filter"></div>
+    <div class="card-grid" id="pub-cards"></div>
+  </div>
+  <div id="pub-scatter" class="hidden">
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:.8rem">横軸：権力スコア　縦軸：責任スコア　円の大きさ：年収　色：SDI水準<br>理想は右上の対角線上。右下＝「権力過剰・責任欠如」の危険域。</p>
+    <div class="chart-wrap" style="height:420px">
+      <canvas id="pub-scatter-canvas" role="img" aria-label="公務員・議員の権力スコアと責任スコアの散布図">散布図</canvas>
+    </div>
+  </div>
+  <div id="pub-chart" class="hidden">
+    <div class="legend-row">
+      <span><span class="ldot" style="background:#1a6b3a"></span>年収（万円）</span>
+      <span><span class="ldot" style="background:#534AB7"></span>権力×50</span>
+      <span><span class="ldot" style="background:#1a3a5c"></span>責任×50</span>
+      <span><span class="ldot" style="background:#c8440a"></span>SDI×20</span>
+    </div>
+    <div class="chart-wrap" id="pub-chart-wrap" style="height:680px">
+      <canvas id="pub-canvas" role="img" aria-label="公務員・議員の年収・権力・責任・SDI比較グラフ">公務員議員比較グラフ</canvas>
+    </div>
+  </div>
+</section>
+
+<!-- CALCULATOR -->
+<section class="section" id="calculator">
+  <p class="section-tag">04 / Calculator</p>
+  <h2>あなたの職業のSDIを試算する</h2>
+  <div class="calc-grid">
+    <div class="calc-panel">
+      <h3>入力パラメータ</h3>
+      <div class="field">
+        <label>プリセット（職種選択）</label>
+        <select id="c-preset" onchange="applyCalcPreset()">
+          <option value="">— 手動入力 —</option>
+          <option value="labor_care">看護師・介護士</option>
+          <option value="labor_teach">教員・保育士</option>
+          <option value="labor_mfg">製造業ライン労働者</option>
+          <option value="labor_farm">農林漁業従事者</option>
+          <option value="labor_police">警察官・自衛官</option>
+          <option value="mgr_finance">金融機関経営者</option>
+          <option value="mgr_it">IT企業経営者</option>
+          <option value="gov_minister">国会議員（大臣）</option>
+          <option value="gov_diet">国会議員（一般）</option>
+          <option value="gov_bureaucrat">国家公務員（課長級）</option>
+          <option value="hft">高速アルゴリズム取引</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>年収・利益（万円）</label>
+        <input type="number" id="c-income" value="400" min="0" oninput="calcSDI()">
+      </div>
+      <div class="field">
+        <label>活動・保有期間（年）</label>
+        <input type="number" id="c-time" value="1" min="0.001" step="0.1" oninput="calcSDI()">
+      </div>
+      <div class="field">
+        <label>実体貢献度（0〜10）</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" step="0.5" id="c-contrib" value="6" oninput="updC('c-contrib');calcSDI()">
+          <span class="slider-val" id="c-contrib-v">6.0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>リスク負担度（0〜10）</label>
+        <div class="slider-row">
+          <input type="range" min="0" max="10" step="0.5" id="c-risk" value="4" oninput="updC('c-risk');calcSDI()">
+          <span class="slider-val" id="c-risk-v">4.0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>社会修復係数（−5 ＝ 歪拡大　+5 ＝ 歪修復）</label>
+        <div class="slider-row">
+          <input type="range" min="-5" max="5" step="0.5" id="c-social" value="1" oninput="updC('c-social');calcSDI()">
+          <span class="slider-val" id="c-social-v">+1.0</span>
+        </div>
+      </div>
+    </div>
+    <div class="result-panel">
+      <h3>試算結果</h3>
+      <div class="result-sdi" id="r-sdi">—</div>
+      <div class="result-verdict" id="r-verdict">計算中</div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>球面内（均衡）</span><span>球面外（逸脱）</span></div>
+        <div class="progress-track"><div class="progress-fill" id="r-bar" style="width:0%"></div></div>
+        <div class="zone-labels"><span>均衡≦1</span><span>監視〜2</span><span>課徴〜5</span><span>停止〜10</span><span>&gt;10</span></div>
+      </div>
+      <div class="metric-row">
+        <div class="met"><div class="met-l">実体貢献値</div><div class="met-v" id="r-cv">—</div></div>
+        <div class="met"><div class="met-l">√T 時間補正</div><div class="met-v" id="r-sqt">—</div></div>
+        <div class="met"><div class="met-l">正当利益基準</div><div class="met-v" id="r-base">—</div></div>
+        <div class="met"><div class="met-l">判定</div><div class="met-v" id="r-judge" style="font-size:.85rem">—</div></div>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);line-height:1.8" id="r-desc">—</p>
+    </div>
+  </div>
+</section>
+
+<!-- INSIGHT -->
+<section class="section" id="insight">
+  <p class="section-tag">05 / Insight</p>
+  <h2>TTT的分析：最も重要な7つの発見</h2>
+  <div id="insights-container"></div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="footer-title">TTT — トリテトラ理論</div>
+      <p class="footer-desc">
+        「ベクトルの総和はゼロになる — 宇宙の釣り合いの原理」<br>
+        本ダッシュボードのSDI試算値は理論的試算であり、公式統計ではありません。
+        数値の根拠と計算方法はGitHubリポジトリで全公開しています。<br>
+        誰でも数値を修正・議論・改善できます。
+      </p>
+      <p class="footer-copy">© 2026 kiki054-n / TTT Project — GPL-3.0 License</p>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/kiki054-n/TTT" target="_blank">GitHub リポジトリ →</a>
+      <a href="https://kiki054-n.github.io/TTT/" target="_blank">デモサイト →</a>
+      <a href="https://github.com/kiki054-n/TTT/blob/main/abstract.md" target="_blank">理論概要（abstract）→</a>
+      <a href="https://github.com/kiki054-n/TTT/discussions" target="_blank">ディスカッション →</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ═══════════════════════════════
+   DATA
+═══════════════════════════════ */
+const IND_DATA = [
+  {sec:'1次',ind:'農業・漁業',role:'経営者',label:'農林漁業経営者',income:420,motiv:8.5,contrib:8,risk:8,social:4,time:20},
+  {sec:'1次',ind:'農業・漁業',role:'労働者',label:'農林漁業従事者',income:280,motiv:7.2,contrib:8,risk:3,social:4,time:1},
+  {sec:'2次',ind:'製造業',role:'経営者',label:'製造業経営者',income:1200,motiv:6.5,contrib:7,risk:8,social:2,time:10},
+  {sec:'2次',ind:'製造業',role:'労働者',label:'製造業ライン労働者',income:420,motiv:5.8,contrib:7,risk:2,social:2,time:1},
+  {sec:'2次',ind:'建設業',role:'経営者',label:'建設業経営者',income:900,motiv:6.8,contrib:8,risk:7,social:3,time:8},
+  {sec:'2次',ind:'建設業',role:'労働者',label:'建設現場労働者',income:380,motiv:6.5,contrib:9,risk:5,social:3,time:1},
+  {sec:'3次',ind:'金融',role:'経営者',label:'金融機関経営者',income:4500,motiv:7.0,contrib:4,risk:5,social:-2,time:5},
+  {sec:'3次',ind:'金融',role:'労働者',label:'金融機関一般職',income:650,motiv:5.5,contrib:5,risk:2,social:-1,time:1},
+  {sec:'3次',ind:'IT・技術',role:'経営者',label:'IT企業経営者',income:3200,motiv:8.0,contrib:7,risk:8,social:2,time:6},
+  {sec:'3次',ind:'IT・技術',role:'労働者',label:'ITエンジニア',income:580,motiv:7.5,contrib:8,risk:2,social:2,time:1},
+  {sec:'3次',ind:'医療・福祉',role:'経営者',label:'医療機関経営者',income:1100,motiv:8.2,contrib:9,risk:6,social:5,time:7},
+  {sec:'3次',ind:'医療・福祉',role:'労働者',label:'看護師・介護士',income:380,motiv:8.8,contrib:9,risk:3,social:5,time:1},
+  {sec:'3次',ind:'小売・飲食',role:'経営者',label:'小売・飲食経営者',income:700,motiv:7.0,contrib:6,risk:7,social:1,time:5},
+  {sec:'3次',ind:'小売・飲食',role:'労働者',label:'小売・飲食パート',income:260,motiv:5.0,contrib:6,risk:1,social:1,time:1},
+  {sec:'3次',ind:'教育',role:'経営者',label:'教育機関経営者',income:900,motiv:7.5,contrib:8,risk:5,social:5,time:6},
+  {sec:'3次',ind:'教育',role:'労働者',label:'教員・保育士',income:430,motiv:8.0,contrib:9,risk:2,social:5,time:1},
+];
+
+const PUB_DATA = [
+  {cat:'国家公務員',label:'事務次官',income:2300,power:9,resp:8,contrib:7,risk:5,social:3,time:35,tenure:'終身',immunity:'なし',note:'退職後天下り慣行あり'},
+  {cat:'国家公務員',label:'局長級',income:1700,power:8,resp:7,contrib:7,risk:4,social:3,time:30,tenure:'終身',immunity:'なし',note:'省庁予算配分権限'},
+  {cat:'国家公務員',label:'課長級（キャリア）',income:1100,power:6,resp:6,contrib:7,risk:3,social:3,time:15,tenure:'終身',immunity:'なし',note:'政策立案の実務担当'},
+  {cat:'国家公務員',label:'一般職員（ノンキャリア）',income:550,power:2,resp:4,contrib:6,risk:1,social:3,time:1,tenure:'終身',immunity:'なし',note:'窓口・実務処理'},
+  {cat:'国家公務員',label:'自衛官',income:480,power:4,resp:8,contrib:8,risk:9,social:4,time:1,tenure:'定年制',immunity:'なし',note:'生命リスクあり'},
+  {cat:'国家公務員',label:'警察官',income:430,power:5,resp:8,contrib:8,risk:7,social:4,time:1,tenure:'終身',immunity:'なし',note:'身体危険リスクあり'},
+  {cat:'国家公務員',label:'検察官',income:1200,power:8,resp:9,contrib:8,risk:4,social:3,time:15,tenure:'終身',immunity:'なし',note:'起訴独占権保持'},
+  {cat:'地方公務員',label:'都道府県知事',income:1500,power:8,resp:7,contrib:6,risk:4,social:2,time:4,tenure:'選挙',immunity:'なし',note:'任期4年・再選可'},
+  {cat:'地方公務員',label:'市区町村長',income:900,power:6,resp:7,contrib:6,risk:3,social:2,time:4,tenure:'選挙',immunity:'なし',note:'地域行政最高責任者'},
+  {cat:'地方公務員',label:'地方公務員（一般）',income:480,power:2,resp:4,contrib:6,risk:1,social:2,time:1,tenure:'終身',immunity:'なし',note:'住民サービス実務'},
+  {cat:'国会議員',label:'内閣総理大臣',income:4100,power:10,resp:8,contrib:5,risk:5,social:1,time:2,tenure:'選挙',immunity:'不逮捕特権',note:'衆院解散権・条約締結権'},
+  {cat:'国会議員',label:'閣僚（大臣）',income:2900,power:9,resp:7,contrib:5,risk:4,social:1,time:2,tenure:'選挙',immunity:'不逮捕特権',note:'省庁指揮監督権'},
+  {cat:'国会議員',label:'衆議院議員',income:2200,power:7,resp:5,contrib:4,risk:3,social:0,time:4,tenure:'選挙',immunity:'不逮捕＋免責特権',note:'歳費＋各種手当'},
+  {cat:'国会議員',label:'参議院議員',income:2200,power:7,resp:5,contrib:4,risk:3,social:0,time:6,tenure:'選挙',immunity:'不逮捕＋免責特権',note:'歳費＋各種手当'},
+  {cat:'地方議員',label:'都道府県議会議員',income:1100,power:5,resp:4,contrib:4,risk:2,social:0,time:4,tenure:'選挙',immunity:'なし',note:'条例制定・予算審議'},
+  {cat:'地方議員',label:'市区町村議員',income:480,power:3,resp:3,contrib:3,risk:2,social:0,time:4,tenure:'選挙',immunity:'なし',note:'地域予算審議'},
+  {cat:'地方議員',label:'町村議員（小規模）',income:180,power:2,resp:3,contrib:4,risk:1,social:1,time:4,tenure:'選挙',immunity:'なし',note:'実質ボランティア的'},
+];
+
+/* ═══════════════════════════════
+   SDI CORE
+═══════════════════════════════ */
+function sdi(income,contrib,risk,social,time){
+  const sqrtT=Math.sqrt(Math.max(time,0.001));
+  const cv=(contrib+risk)/2;
+  const sa=social+5.5;
+  const base=cv*sqrtT*sa;
+  if(base<0.01) return 99.9;
+  return Math.abs(income/base);
+}
+function sdiFromD(d){ return sdi(d.income,d.contrib,d.risk,d.social,d.time); }
+function sdiColor(s){
+  if(s<=2)  return '#1a6b3a';
+  if(s<=4)  return '#7a5010';
+  if(s<=8)  return '#c8440a';
+  if(s<=14) return '#8a2010';
+  return '#5a0a08';
+}
+function sdiMeta(s){
+  if(s<=2)  return {t:'均衡',bg:'#e8f5ee',c:'#1a6b3a'};
+  if(s<=4)  return {t:'要監視',bg:'#fdf3e0',c:'#7a5010'};
+  if(s<=8)  return {t:'課徴金域',bg:'#fdeade',c:'#c8440a'};
+  if(s<=14) return {t:'逸脱・中',bg:'#fde8e3',c:'#8a2010'};
+  return {t:'重度逸脱',bg:'#f9deda',c:'#5a0a08'};
+}
+function powerRespGap(d){
+  const g=d.power-d.resp;
+  if(g>=4) return {t:'権力過剰・責任欠如',c:'#8a2010'};
+  if(g>=2) return {t:'やや権力超過',c:'#c8440a'};
+  if(g>=-1) return {t:'権力と責任が均衡',c:'#1a6b3a'};
+  return {t:'高責任・低権力',c:'#1a3a5c'};
+}
+
+/* ═══════════════════════════════
+   INDUSTRY SECTION
+═══════════════════════════════ */
+const indSecs=['全て','1次','2次','3次'];
+const indRoles=['全役職','経営者','労働者'];
+let selISec='全て', selIRole='全役職';
+
+function indFiltered(){
+  return IND_DATA.filter(d=>{
+    return (selISec==='全て'||d.sec===selISec)&&(selIRole==='全役職'||d.role===selIRole);
+  });
+}
+function renderIndFilters(){
+  const el=document.getElementById('ind-filter');
+  el.innerHTML='';
+  [...indSecs,...indRoles].forEach(f=>{
+    const isSec=indSecs.includes(f);
+    const on=isSec?selISec===f:selIRole===f;
+    const b=document.createElement('button');
+    b.className='fbtn'+(on?' on':'');
+    b.textContent=f;
+    b.onclick=()=>{ if(isSec)selISec=f;else selIRole=f; renderIndFilters();renderIndCards(); };
+    el.appendChild(b);
+  });
+}
+function renderIndCards(){
+  const data=indFiltered();
+  const maxI=Math.max(...IND_DATA.map(d=>d.income));
+  const el=document.getElementById('ind-cards');
+  el.innerHTML='';
+  data.forEach(d=>{
+    const s=sdiFromD(d);
+    const sm=sdiMeta(s);
+    const secCol=d.sec==='1次'?'#1a6b3a':d.sec==='2次'?'#1a3a5c':'#534AB7';
+    const roleCol=d.role==='経営者'?'#c8440a':'#6b6560';
+    const div=document.createElement('div');
+    div.className='card';
+    div.innerHTML=`
+      <div class="card-head">
+        <div class="card-badges">
+          <span class="badge" style="background:${secCol}18;color:${secCol};border-color:${secCol}33">${d.sec}次・${d.ind}</span>
+          <span class="badge" style="background:${roleCol}18;color:${roleCol};border-color:${roleCol}33">${d.role}</span>
+        </div>
+        <span class="badge" style="background:${sm.bg};color:${sm.c};border-color:${sm.c}44">${sm.t}</span>
+      </div>
+      <div class="card-title">${d.label}</div>
+      <div class="bar-row"><span class="bar-lbl">年収</span><div class="bar-track"><div class="bar-fill" style="width:${(d.income/maxI*100).toFixed(1)}%;background:#1a6b3a"></div></div><span class="bar-val">${d.income}万円</span></div>
+      <div class="bar-row"><span class="bar-lbl">労働意欲</span><div class="bar-track"><div class="bar-fill" style="width:${(d.motiv/10*100).toFixed(1)}%;background:#1a3a5c"></div></div><span class="bar-val">${d.motiv.toFixed(1)}/10</span></div>
+      <div class="bar-row"><span class="bar-lbl">実体貢献</span><div class="bar-track"><div class="bar-fill" style="width:${(d.contrib/10*100).toFixed(1)}%;background:#534AB7"></div></div><span class="bar-val">${d.contrib}/10</span></div>
+      <div class="card-footer">
+        <span class="balance-lbl" style="color:var(--muted);font-size:.72rem">社会修復係数 <strong style="color:${d.social>=0?'#1a6b3a':'#c8440a'}">${d.social>=0?'+':''}${d.social}</strong></span>
+        <div class="sdi-display"><span class="sdi-lbl">SDI</span><span class="sdi-val" style="color:${sdiColor(s)}">${s.toFixed(1)}</span></div>
+      </div>
+    `;
+    el.appendChild(div);
+  });
+}
+
+let indChartInst=null;
+function renderIndChart(){
+  const data=IND_DATA;
+  const wrap=document.getElementById('ind-chart-wrap');
+  wrap.style.height=Math.max(400,data.length*36+80)+'px';
+  if(indChartInst) indChartInst.destroy();
+  indChartInst=new Chart(document.getElementById('ind-canvas'),{
+    type:'bar',
+    data:{
+      labels:data.map(d=>d.label),
+      datasets:[
+        {label:'年収（万円）',data:data.map(d=>d.income),backgroundColor:'#1a6b3a66',borderColor:'#1a6b3a',borderWidth:1},
+        {label:'労働意欲×50',data:data.map(d=>d.motiv*50),backgroundColor:'#1a3a5c66',borderColor:'#1a3a5c',borderWidth:1},
+        {label:'SDI×30',data:data.map(d=>Math.min(sdiFromD(d)*30,800)),backgroundColor:'#c8440a66',borderColor:'#c8440a',borderWidth:1},
+      ]
+    },
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#6b6560',font:{size:10}},grid:{color:'rgba(107,101,96,0.1)'}},
+        y:{ticks:{color:'#3a3530',font:{size:10}},grid:{display:false}}
+      }
+    }
+  });
+}
+
+function switchIndustryTab(v){
+  document.getElementById('ind-list').classList.toggle('hidden',v!=='list');
+  document.getElementById('ind-chart').classList.toggle('hidden',v!=='chart');
+  document.querySelectorAll('#industry .tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['list','chart'][i]===v);
+  });
+  if(v==='chart') renderIndChart();
+}
+
+/* ═══════════════════════════════
+   PUBLIC SECTION
+═══════════════════════════════ */
+const pubCats=['全て','国家公務員','地方公務員','国会議員','地方議員'];
+let selPCat='全て';
+let pubScatterInst=null, pubBarInst=null;
+
+function pubFiltered(){ return selPCat==='全て'?PUB_DATA:PUB_DATA.filter(d=>d.cat===selPCat); }
+
+function renderPubFilters(){
+  const el=document.getElementById('pub-filter');
+  el.innerHTML='';
+  pubCats.forEach(f=>{
+    const b=document.createElement('button');
+    b.className='fbtn'+(selPCat===f?' on':'');
+    b.textContent=f;
+    b.onclick=()=>{ selPCat=f; renderPubFilters(); renderPubCards(); };
+    el.appendChild(b);
+  });
+}
+
+function renderPubCards(){
+  const data=pubFiltered();
+  const maxI=Math.max(...PUB_DATA.map(d=>d.income));
+  const el=document.getElementById('pub-cards');
+  el.innerHTML='';
+  data.forEach(d=>{
+    const s=sdi(d.income,d.contrib,d.risk,d.social,d.time);
+    const sm=sdiMeta(s);
+    const rg=powerRespGap(d);
+    const catCol=d.cat==='国家公務員'?'#1a3a5c':d.cat==='地方公務員'?'#1a6b3a':d.cat==='国会議員'?'#c8440a':'#534AB7';
+    const immBad=d.immunity!=='なし';
+    const div=document.createElement('div');
+    div.className='card';
+    div.innerHTML=`
+      <div class="card-head">
+        <div class="card-badges">
+          <span class="badge" style="background:${catCol}18;color:${catCol};border-color:${catCol}33">${d.cat}</span>
+          <span class="badge" style="background:${immBad?'#c8440a18':'var(--paper2)'};color:${immBad?'#8a2010':'var(--muted)'};border-color:${immBad?'#c8440a44':'var(--border)'}">${d.immunity}</span>
+          <span class="badge" style="background:var(--paper2);color:var(--muted);border-color:var(--border)">${d.tenure}</span>
+        </div>
+        <span class="badge" style="background:${sm.bg};color:${sm.c};border-color:${sm.c}44">${sm.t}</span>
+      </div>
+      <div class="card-title">${d.label}</div>
+      <div class="bar-row"><span class="bar-lbl">年収</span><div class="bar-track"><div class="bar-fill" style="width:${(d.income/maxI*100).toFixed(1)}%;background:#1a6b3a"></div></div><span class="bar-val">${d.income}万円</span></div>
+      <div class="bar-row"><span class="bar-lbl">権力スコア</span><div class="bar-track"><div class="bar-fill" style="width:${d.power*10}%;background:#534AB7"></div></div><span class="bar-val">${d.power}/10</span></div>
+      <div class="bar-row"><span class="bar-lbl">責任スコア</span><div class="bar-track"><div class="bar-fill" style="width:${d.resp*10}%;background:#1a3a5c"></div></div><span class="bar-val">${d.resp}/10</span></div>
+      <div class="bar-row"><span class="bar-lbl">社会貢献</span><div class="bar-track"><div class="bar-fill" style="width:${d.contrib*10}%;background:#1a6b3a"></div></div><span class="bar-val">${d.contrib}/10</span></div>
+      <div class="card-footer">
+        <span class="balance-lbl" style="color:${rg.c};font-size:.72rem">${rg.t}</span>
+        <div class="sdi-display"><span class="sdi-lbl">SDI</span><span class="sdi-val" style="color:${sdiColor(s)}">${s.toFixed(1)}</span></div>
+      </div>
+      <div class="card-note">${d.note}</div>
+    `;
+    el.appendChild(div);
+  });
+}
+
+function renderPubScatter(){
+  if(pubScatterInst) pubScatterInst.destroy();
+  const datasets=PUB_DATA.map(d=>{
+    const s=sdi(d.income,d.contrib,d.risk,d.social,d.time);
+    const col=sdiColor(s);
+    return {
+      label:d.label,
+      data:[{x:d.power,y:d.resp,r:Math.max(7,Math.min(d.income/100,32))}],
+      backgroundColor:col+'99',borderColor:col,borderWidth:1.5
+    };
+  });
+  pubScatterInst=new Chart(document.getElementById('pub-scatter-canvas'),{
+    type:'bubble',data:{datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
+        const d=PUB_DATA[ctx.datasetIndex];
+        return [`${d.label}`,`権力:${d.power} 責任:${d.resp}`,`年収:${d.income}万 SDI:${sdi(d.income,d.contrib,d.risk,d.social,d.time).toFixed(1)}`];
+      }}}},
+      scales:{
+        x:{min:0,max:11,title:{display:true,text:'権力スコア',color:'#6b6560'},ticks:{color:'#6b6560',stepSize:1},grid:{color:'rgba(107,101,96,0.1)'}},
+        y:{min:0,max:11,title:{display:true,text:'責任スコア',color:'#6b6560'},ticks:{color:'#6b6560',stepSize:1},grid:{color:'rgba(107,101,96,0.1)'}}
+      },layout:{padding:20}
+    }
+  });
+}
+
+function renderPubBar(){
+  const data=PUB_DATA;
+  const wrap=document.getElementById('pub-chart-wrap');
+  wrap.style.height=Math.max(420,data.length*40+80)+'px';
+  if(pubBarInst) pubBarInst.destroy();
+  pubBarInst=new Chart(document.getElementById('pub-canvas'),{
+    type:'bar',
+    data:{
+      labels:data.map(d=>d.label),
+      datasets:[
+        {label:'年収（万円）',data:data.map(d=>d.income),backgroundColor:'#1a6b3a66',borderColor:'#1a6b3a',borderWidth:1},
+        {label:'権力×50',data:data.map(d=>d.power*50),backgroundColor:'#534AB766',borderColor:'#534AB7',borderWidth:1},
+        {label:'責任×50',data:data.map(d=>d.resp*50),backgroundColor:'#1a3a5c66',borderColor:'#1a3a5c',borderWidth:1},
+        {label:'SDI×20',data:data.map(d=>Math.min(sdi(d.income,d.contrib,d.risk,d.social,d.time)*20,700)),backgroundColor:'#c8440a66',borderColor:'#c8440a',borderWidth:1},
+      ]
+    },
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#6b6560',font:{size:10}},grid:{color:'rgba(107,101,96,0.1)'}},
+        y:{ticks:{color:'#3a3530',font:{size:10}},grid:{display:false}}
+      }
+    }
+  });
+}
+
+function switchPublicTab(v){
+  ['list','scatter','chart'].forEach(id=>{
+    document.getElementById('pub-'+id).classList.toggle('hidden',id!==v);
+  });
+  document.querySelectorAll('#public .tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['list','scatter','chart'][i]===v);
+  });
+  if(v==='scatter') renderPubScatter();
+  if(v==='chart') renderPubBar();
+}
+
+/* ═══════════════════════════════
+   CALCULATOR
+═══════════════════════════════ */
+const CALC_PRESETS={
+  labor_care:  {income:380,time:1,contrib:9,risk:3,social:5},
+  labor_teach: {income:430,time:1,contrib:9,risk:2,social:5},
+  labor_mfg:   {income:420,time:1,contrib:7,risk:2,social:2},
+  labor_farm:  {income:280,time:1,contrib:8,risk:3,social:4},
+  labor_police:{income:450,time:1,contrib:8,risk:8,social:4},
+  mgr_finance: {income:4500,time:5,contrib:4,risk:5,social:-2},
+  mgr_it:      {income:3200,time:6,contrib:7,risk:8,social:2},
+  gov_minister:{income:2900,time:2,contrib:5,risk:4,social:1},
+  gov_diet:    {income:2200,time:4,contrib:4,risk:3,social:0},
+  gov_bureaucrat:{income:1100,time:15,contrib:7,risk:3,social:3},
+  hft:         {income:500,time:0.001,contrib:0.5,risk:0.5,social:-3},
+};
+
+function updC(id){
+  const v=parseFloat(document.getElementById(id).value);
+  const sign=id==='c-social'&&v>=0?'+':'';
+  document.getElementById(id+'-v').textContent=sign+v.toFixed(1);
+}
+function applyCalcPreset(){
+  const k=document.getElementById('c-preset').value;
+  if(!k) return;
+  const p=CALC_PRESETS[k];
+  document.getElementById('c-income').value=p.income;
+  document.getElementById('c-time').value=p.time;
+  document.getElementById('c-contrib').value=p.contrib; updC('c-contrib');
+  document.getElementById('c-risk').value=p.risk;       updC('c-risk');
+  document.getElementById('c-social').value=p.social;   updC('c-social');
+  calcSDI();
+}
+function calcSDI(){
+  const income=parseFloat(document.getElementById('c-income').value)||0;
+  const time=Math.max(parseFloat(document.getElementById('c-time').value)||0.001,0.001);
+  const contrib=parseFloat(document.getElementById('c-contrib').value)||0;
+  const risk=parseFloat(document.getElementById('c-risk').value)||0;
+  const social=parseFloat(document.getElementById('c-social').value)||0;
+  const sqrtT=Math.sqrt(time);
+  const cv=(contrib+risk)/2;
+  const sa=social+5.5;
+  const base=cv*sqrtT*sa;
+  const s=base<0.01?99.9:Math.abs(income/base);
+  const sm=sdiMeta(s);
+
+  document.getElementById('r-sdi').textContent=s>99?'99.9+':s.toFixed(2);
+  document.getElementById('r-sdi').style.color=sdiColor(s);
+  const vEl=document.getElementById('r-verdict');
+  vEl.textContent=sm.t;
+  vEl.style.background=sm.bg;
+  vEl.style.color=sm.c;
+  vEl.style.border='1px solid '+sm.c+'55';
+
+  const pct=Math.min(s/12*100,100);
+  const bar=document.getElementById('r-bar');
+  bar.style.width=pct.toFixed(1)+'%';
+  bar.style.background=sdiColor(s);
+
+  document.getElementById('r-cv').textContent=cv.toFixed(2);
+  document.getElementById('r-sqt').textContent=sqrtT.toFixed(3);
+  document.getElementById('r-base').textContent=base.toFixed(1);
+  document.getElementById('r-judge').textContent=sm.t;
+  document.getElementById('r-judge').style.color=sm.c;
+
+  const descs={
+    '均衡':'貢献と対価が球面内で釣り合っています。正当な活動です。',
+    '要監視':'わずかな逸脱。実体貢献の内訳を開示することが望ましい。',
+    '課徴金域':'球面外逸脱・軽度。超過利益の一部を修復基金へ。',
+    '逸脱・中':'中度の逸脱。営業停止・活動改善計画の提出が必要。',
+    '重度逸脱':'重度逸脱。社会的歪みが臨界点を超えています。TTT均衡法の適用対象。',
+  };
+  document.getElementById('r-desc').textContent=descs[sm.t]||'';
+}
+
+/* ═══════════════════════════════
+   INSIGHTS
+═══════════════════════════════ */
+function renderInsights(){
+  const insights=[
+    {col:'#8a2010',title:'内閣総理大臣・閣僚：不逮捕特権が責任ベクトルを消している',
+     body:'年収4100万円・権力10でありながら不逮捕特権により法的責任が実質免除。TTT的には「権力ベクトルに対応する責任ベクトルが欠落」した状態。球面外に逸脱した権力は必ず修復ベクトル（政治危機・信任失墜）を呼び込む。'},
+    {col:'#c8440a',title:'国会議員：不逮捕特権＋免責特権の二重保護構造',
+     body:'歳費2200万円に加え、不逮捕特権・免責特権の二重免責。権力7に対し責任スコア5と乖離。領収書不要の各種手当も含め、「権力だけが球面外に逸脱し修復ベクトルが発動しない」構造が制度的に固定されている。'},
+    {col:'#1a3a5c',title:'自衛官・警察官：最高責任・最高リスク・最低報酬の完全逆転',
+     body:'自衛官年収480万・責任スコア8・リスク9。生命リスクを負いながら報酬は議員の約5分の1。これはTTT的に最も深刻な球面歪みの一つ。「最も強い修復ベクトルを担う職種が最も報われない」という構造的矛盾。'},
+    {col:'#1a6b3a',title:'看護師・介護士・教員：社会の根幹が報われない',
+     body:'看護師年収380万・意欲8.8・貢献9・社会修復係数+5。教員も同水準。次世代育成と生命維持という最重要機能を担いながら年収は最低水準。この歪みは世代を超えて拡大し、やがて球面崩壊（人材不足・質の低下）として修復ベクトルが発動する。'},
+    {col:'#534AB7',title:'事務次官・局長：在職中は均衡、退職後が問題',
+     body:'在職中は権力8〜9・責任7〜8とほぼ均衡。しかし退職後の「天下り」により在職時の権力が民間に持ち込まれる。退職によって消えるはずの権力ベクトルが残存し続ける構造的欠陥。修復ベクトルは「天下り規制の強化」として現れるが十分機能していない。'},
+    {col:'#7a5010',title:'町村議員：民主主義末端の球面崩壊',
+     body:'年収180万円・実質ボランティア化・なり手不足が深刻。地域の実情に最も近い立場でありながら報酬は最低。「地域修復ベクトルの担い手が持続不可能な状態」であり、民主主義の末端から球面が静かに崩壊しつつある。'},
+    {col:'#1a4a2e',title:'TTT的理想：権力＝責任＝報酬の正四面体均衡',
+     body:'球面均衡が成立する条件：権力・責任・報酬・社会貢献の四ベクトルが正四面体（109.47°）で安定配置される状態。現状は「権力だけが球面外」または「責任だけが圧縮」されており、修復ベクトルとして「権力の定量化と法的責任の自動連動制度」が必要。'},
+  ];
+  const el=document.getElementById('insights-container');
+  insights.forEach(ins=>{
+    const d=document.createElement('div');
+    d.className='insight-card';
+    d.style.borderColor=ins.col;
+    d.innerHTML=`<div class="insight-title" style="color:${ins.col}">${ins.title}</div><div class="insight-body">${ins.body}</div>`;
+    el.appendChild(d);
+  });
+}
+
+/* ═══════════════════════════════
+   INIT
+═══════════════════════════════ */
+renderIndFilters();
+renderIndCards();
+renderPubFilters();
+renderPubCards();
+calcSDI();
+renderInsights();
+</script>
+</body>
+</html>
