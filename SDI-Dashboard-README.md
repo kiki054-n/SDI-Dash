@@ -46,7 +46,7 @@ SDIダッシュボードが示すことは一つです：
 
 ## デモを見る
 
-**[→ https://kiki054-n.github.io/SDI-Dashboard/](https://kiki054-n.github.io/SDI-Dashboard/)**
+**[→ https://kiki054-n.github.io/SDI-Dashboard/](https://kiki054-n.github.io/SDI-Dash/)**
 
 - 産業別・職種別 SDI試算
 - 公務員・議員の権力×責任×報酬分析
